@@ -87,8 +87,10 @@ export function AccessoryView({
  * 有预警时第三行让给预警；没有逐日数据（备用来源）时只画「现在」「今天」两行。
  */
 
-/** 标签列宽：两个 16pt 汉字约 32pt，留一点余量 */
-const LABEL_WIDTH = 34;
+/** 标签列宽：两个 16pt 汉字约 32pt + 4pt 到图标的间距。定宽，三行标签才对齐 */
+const LABEL_WIDTH = 38;
+/** 图标列宽：16pt 图标 + 5pt 到温度的间距。定宽，三行图标才落在同一 x（弹性间隔会把内容少的行推右） */
+const ICON_WIDTH = 21;
 /** 最低温列宽：「21°」在 17pt 下约 24pt，定宽让两行横线起点对齐 */
 const LOW_WIDTH = 27;
 /** 温度区间横线：长度超过 ~24pt 会开始挤字（锁屏矩形只有 ~150pt 宽） */
@@ -101,10 +103,24 @@ function RectRow({ label, symbol, children }: { label: string; symbol: string; c
       <Text font={16} fontWeight="semibold" frame={{ width: LABEL_WIDTH, alignment: "leading" }} lineLimit={1} minScaleFactor={0.85}>
         {label}
       </Text>
-      <Spacer minLength={4} />
-      <Image systemName={symbol} font={16} fontWeight="semibold" />
-      <Spacer minLength={5} />
+      <Image systemName={symbol} font={16} fontWeight="semibold" frame={{ width: ICON_WIDTH, alignment: "leading" }} />
       {children}
+      <Spacer minLength={0} />
+    </HStack>
+  );
+}
+
+/** 最低温 — 横线 — 最高温：间距固定 2pt，最低温列定宽，两行横线起点对齐 */
+function RangeCells({ low, high }: { low: string; high: string }) {
+  return (
+    <HStack spacing={2}>
+      <Text font={17} fontWeight="bold" monospacedDigit frame={{ width: LOW_WIDTH, alignment: "leading" }} lineLimit={1} minScaleFactor={0.85}>
+        {low}
+      </Text>
+      <RoundedRectangle cornerRadius={DASH_THICKNESS / 2} fill="label" frame={{ width: DASH_LENGTH, height: DASH_THICKNESS }} />
+      <Text font={17} fontWeight="bold" monospacedDigit lineLimit={1} minScaleFactor={0.85}>
+        {high}
+      </Text>
     </HStack>
   );
 }
@@ -123,15 +139,7 @@ function RectangularRows({ content, alert, tapURL }: { content: Extract<Content,
         </Text>
       </RectRow>
       <RectRow label="今天" symbol={content.condition.symbol}>
-        <Text font={17} fontWeight="bold" monospacedDigit frame={{ width: LOW_WIDTH, alignment: "leading" }} lineLimit={1} minScaleFactor={0.85}>
-          {content.todayLow}
-        </Text>
-        <Spacer minLength={2} />
-        <RoundedRectangle cornerRadius={DASH_THICKNESS / 2} fill="label" frame={{ width: DASH_LENGTH, height: DASH_THICKNESS }} />
-        <Spacer minLength={2} />
-        <Text font={17} fontWeight="bold" monospacedDigit lineLimit={1} minScaleFactor={0.85}>
-          {content.todayHigh}
-        </Text>
+        <RangeCells low={content.todayLow} high={content.todayHigh} />
       </RectRow>
       {alert !== null ? (
         <RectRow label="预警" symbol={alert.symbol}>
@@ -141,15 +149,7 @@ function RectangularRows({ content, alert, tapURL }: { content: Extract<Content,
         </RectRow>
       ) : third !== null ? (
         <RectRow label={thirdLabel} symbol={third.symbol}>
-          <Text font={17} fontWeight="bold" monospacedDigit frame={{ width: LOW_WIDTH, alignment: "leading" }} lineLimit={1} minScaleFactor={0.85}>
-            {third.low}
-          </Text>
-          <Spacer minLength={2} />
-          <RoundedRectangle cornerRadius={DASH_THICKNESS / 2} fill="label" frame={{ width: DASH_LENGTH, height: DASH_THICKNESS }} />
-          <Spacer minLength={2} />
-          <Text font={17} fontWeight="bold" monospacedDigit lineLimit={1} minScaleFactor={0.85}>
-            {third.high}
-          </Text>
+          <RangeCells low={third.low} high={third.high} />
         </RectRow>
       ) : null}
     </VStack>
