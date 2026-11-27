@@ -1,21 +1,34 @@
-// 锁屏 / 待机的三种小组件。系统只给单色（图标和字都会被统一染色），所以这里不靠颜色说话，
-// 只放图标和字，也不指定前景色。圆形放图标 + 气温，矩形放地名、气温和天气、最高最低，单行放一句话。
+// 锁屏 / 待机的三种小组件。系统只给单色（图标和字都会被统一染色），所以这里不靠颜色说话。
 //
-// 对应 RoamControl 的天气角标（一朵云加当前气温）：锁屏上的圆形就是那个角标。
-// 点一下打开本脚本（widgetURL）；不写的话，点锁屏小组件只会打开 Scripting 的首页。
-// 有预警时：单行换成预警短名、矩形的第三行换成预警（前面是按预警类型挑的图案）、圆形里的天气图标换成三角（通用的警告符号，
-// 圆形里没有地方写字，用类型图案的话会和「现在在下雨」那种天气图标混在一起）。
+// 圆形和矩形有 13 款可选（8 款圆形、5 款矩形，见 widget/lock/styles.tsx）：画哪一款由组件「参数」里的编号 / 名字决定，
+// 参数没填或者填的不是这种形状的款式，用 App 页「锁屏样式」里选的那一款（见 core/lock.ts）。
+// 单行还是原来那一句「天气 气温 最高最低」，没有再分款。
+//
+// 没有数据、有预警时仍用原来的简单版面（预警在圆形里换成三角警告图标、矩形第三行写预警文字），
+// 13 款里没有留预警的位置，这时候换回旧版面比硬塞进一小块更清楚。
 // 锁屏是单色，预警的级别颜色画不出来，靠文字（「大风蓝色预警」）说。
+// 点一下打开本脚本（widgetURL）；不写的话，点锁屏小组件只会打开 Scripting 的首页。
 
 import { AccessoryWidgetBackground, HStack, Image, Label, RoundedRectangle, Spacer, Text, VStack, ZStack, type VirtualNode } from "scripting";
 import { weekdayOf, type AlertView, type Content, type DayView } from "../core/present";
+import type { LockStyle } from "../core/lock";
+import { designOf } from "./lock/design";
+import { LockFace } from "./lock/styles";
 
 export function AccessoryView({
   family,
+  width,
+  height,
+  style,
   content,
   tapURL,
 }: {
   family: "circular" | "rectangular" | "inline";
+  /** 组件的实际大小（点），由 widget/view.tsx 给 */
+  width: number;
+  height: number;
+  /** 这一款画什么（core/lock.ts 选好的） */
+  style: LockStyle;
   content: Content;
   tapURL: string | undefined;
 }) {
@@ -56,6 +69,21 @@ export function AccessoryView({
         title={alert !== null ? alert.text : content.inline}
         systemImage={alert !== null ? alert.symbol : content.condition.symbol}
         widgetURL={tapURL}
+      />
+    );
+  }
+
+  // 正常天气：按选好的款式画。没有预警的时候才走这里，有预警仍是下面那套三行 / 图标 + 温度
+  if (alert === null) {
+    const lockFamily = family === "circular" ? "circle" : "rect";
+    return (
+      <LockFace
+        family={lockFamily}
+        style={style}
+        d={designOf(lockFamily, width, height)}
+        card={content}
+        lock={content.lock}
+        tapURL={tapURL}
       />
     );
   }

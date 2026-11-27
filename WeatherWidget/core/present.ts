@@ -13,7 +13,7 @@ import { aqiBand, aqiName, aqiShortName, daysApart, windDirectionName, windLevel
 import type { Forecast } from "./forecast";
 import { headlineText, nextSunEvent, temperatureChange, type SunView } from "./headline";
 import type { Loaded } from "./load";
-import { buildSnapshot, type Slot } from "./snapshot";
+import { buildSnapshot, localParts, parseLocalTime, roundAway, type Slot, type Snapshot } from "./snapshot";
 
 export type SlotView = {
   key: string;
@@ -96,6 +96,168 @@ export type Detail = {
 /** App 页「未来几天」里的一天：`summary` 是天气和气温，`extra` 是风、湿度、空气、紫外线（读不到的不写，一项都没有就是 null） */
 export type WeekLine = { key: string; title: string; summary: string; extra: string | null };
 
+// ---------------------------------------------------------------- 锁屏的数据
+
+/** 锁屏矩形「实况与逐时」右边的一列：钟点、图标、气温 */
+export type LockHour = { key: string; label: string; symbol: string | null; temperature: string };
+
+/** 锁屏矩形「实况与逐日」右边的一列：星期、图标、最高最低 */
+export type LockDay = { key: string; label: string; symbol: string | null; high: string; low: string };
+
+/** 锁屏圆形「日出日落」：下一次日出或日落，`progress` 是白天已经过去的比例（夜里是 0） */
+export type LockSun = { label: "日出" | "日落"; time: string; progress: number };
+
+/**
+ * 锁屏组件要用的原始数（不是已经拼好的话）：13 款里有的看空气质量、有的看紫外线、有的看风和湿度，
+ * 各不相同，所以把要用的数一起带上，由 widget/lock/styles.tsx 决定挑哪几项、怎么写。
+ * 备用来源（Open-Meteo）只有气温、天气、降水概率、日出日落和逐时 / 逐日，其余都是 null。
+ */
+export type LockView = {
+  /** 现在的气温、今天的最高最低（数字，圆形「当日高低温」要在弧线上算位置） */
+  temperature: number;
+  low: number;
+  high: number;
+  /** 当前所在小时的降水概率（%） */
+  rainChance: number | null;
+  /** 紫外线：指数和文字（「强」）；读不到是 null */
+  uvIndex: number | null;
+  uvText: string | null;
+  /** 空气质量：国标指数和文字（「优」） */
+  aqiValue: number | null;
+  aqiText: string | null;
+  /** 风力等级（0~12）、风向（「东北」）、风吹来的方向（度，正北 0） */
+  windLevel: number | null;
+  windDirection: string | null;
+  windAngle: number | null;
+  /** 相对湿度（%） */
+  humidity: number | null;
+  /** 未来两小时每分钟的降水强度（mm/h），没有就是 null */
+  minutelyRain: readonly (number | null)[] | null;
+  /** 现在起每小时的降水量（mm/h），没有就是 null */
+  hourlyRain: readonly (number | null)[] | null;
+  /** 未来两小时的降水说明，有没有降水都有 */
+  rainOutlook: string | null;
+  /** 彩云的一句话（短临预报没有专门一句话时兜底） */
+  keypoint: string | null;
+  /** 接下来三个整点 */
+  nextHours: LockHour[];
+  /** 明天起三天 */
+  nextDays: LockDay[];
+  /** 下一次日出 / 日落；算不出来（极昼极夜、没有日出日落数据）是 null */
+  sun: LockSun | null;
+};
+
+/** 「2026-11-04」往后数几天 */
+function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const moved = new Date(Date.UTC(year, month - 1, day + days));
+  return moved.getUTCFullYear() + "-" + pad2(moved.getUTCMonth() + 1) + "-" + pad2(moved.getUTCDate());
+}
+
+/** 接下来三个整点：用预报里现在之后的三个小时；预报不够时，缺的只写钟点（温度和图标都空着） */
+function lockHours(forecast: Forecast, now: number): LockHour[] {
+  const offset = forecast.utc_offset_seconds;
+  const times = forecast.hourly.time.map((text) => parseLocalTime(text, offset));
+  const out: LockHour[] = [];
+  let base = now;
+  for (let index = 0; index < times.length && out.length < 3; index++) {
+    const date = times[index];
+    if (date === null || date <= now) continue;
+    const code = forecast.hourly.weather_code[index] ?? null;
+    const isDay = forecast.hourly.is_day[index] ?? 1;
+    const temperature = forecast.hourly.temperature_2m[index] ?? null;
+    out.push({
+      key: "hour-" + date,
+      label: localParts(date, offset).hour + "时",
+      symbol: code === null ? null : conditionFor(Math.trunc(code), isDay !== 0).symbol,
+      temperature: temperature === null ? "--" : degrees(roundAway(temperature)),
+    });
+    base = date;
+  }
+  // 缺的位置从最后一个有预报的小时往后接：只写钟点，温度写 --
+  for (let index = out.length; index < 3; index++) {
+    const date = base + (index - out.length + 1) * 3_600_000;
+    out.push({ key: "hour-" + date, label: localParts(date, offset).hour + "时", symbol: null, temperature: "--" });
+  }
+  return out;
+}
+
+/** 明天起三天：没有的那一列只写星期，温度写 -- */
+function lockDays(extras: Extras | null): LockDay[] {
+  const today = extras !== null && extras.days.length > 0 ? extras.days[0].date : null;
+  const out: LockDay[] = [];
+  const list = extras === null ? [] : extras.days.slice(1, 4);
+  for (const day of list) {
+    out.push({
+      key: "day-" + day.date,
+      label: weekdayOf(day.date),
+      symbol: day.code === null ? null : conditionFor(day.code, true).symbol,
+      high: degrees(day.high),
+      low: degrees(day.low),
+    });
+  }
+  for (let index = out.length; index < 3; index++) {
+    const label = today === null ? "--" : weekdayOf(addDays(today, index + 1));
+    out.push({ key: "day-missing-" + index, label, symbol: null, high: "--", low: "--" });
+  }
+  return out;
+}
+
+/**
+ * 下一次日出 / 日落和白天过去的比例。
+ * 白天写日落、比例是（现在 - 日出）/（日落 - 日出）；日出前、日落后写日出，比例 0。
+ * 极昼极夜、预报里没有日出日落（备用来源给了 null）时返回 null。
+ */
+function lockSun(forecast: Forecast, now: number): LockSun | null {
+  const offset = forecast.utc_offset_seconds;
+  const events: Array<{ date: number; label: "日出" | "日落" }> = [];
+  const collect = (texts: readonly (string | null)[], label: "日出" | "日落"): void => {
+    for (const text of texts) {
+      const date = parseLocalTime(text, offset);
+      if (date !== null && date > now) events.push({ date, label });
+    }
+  };
+  collect(forecast.daily.sunrise, "日出");
+  collect(forecast.daily.sunset, "日落");
+  if (events.length === 0) return null;
+  const next = events.reduce((best, event) => (event.date < best.date ? event : best));
+  const { hour, minute } = localParts(next.date, offset);
+  let progress = 0;
+  if (next.label === "日落") {
+    const sunrise = parseLocalTime(forecast.daily.sunrise[0] ?? null, offset);
+    const sunset = parseLocalTime(forecast.daily.sunset[0] ?? null, offset);
+    if (sunrise !== null && sunset !== null && sunset > sunrise) {
+      progress = Math.max(0, Math.min(1, (now - sunrise) / (sunset - sunrise)));
+    }
+  }
+  return { label: next.label, time: pad2(hour) + ":" + pad2(minute), progress };
+}
+
+/** 把天气数据整理成锁屏 13 款要用的数 */
+function lockOf(snapshot: Snapshot, extras: Extras | null, forecast: Forecast, now: number): LockView {
+  return {
+    temperature: snapshot.temperature,
+    low: snapshot.low,
+    high: snapshot.high,
+    rainChance: snapshot.rainChance,
+    uvIndex: extras === null || extras.uv === null ? null : extras.uv.index,
+    uvText: extras === null || extras.uv === null ? null : extras.uv.text,
+    aqiValue: extras === null || extras.aqi === null ? null : extras.aqi.value,
+    aqiText: extras === null || extras.aqi === null ? null : extras.aqi.text,
+    windLevel: extras === null || extras.wind === null ? null : windLevel(extras.wind.kmh),
+    windDirection: extras === null || extras.wind === null ? null : windDirectionName(extras.wind.direction),
+    windAngle: extras === null || extras.wind === null ? null : extras.wind.direction,
+    humidity: extras === null ? null : extras.humidity,
+    minutelyRain: extras === null ? null : extras.minutelyRain,
+    hourlyRain: extras === null ? null : extras.hourlyRain,
+    rainOutlook: extras === null ? null : extras.rainOutlook,
+    keypoint: extras === null ? null : extras.keypoint,
+    nextHours: lockHours(forecast, now),
+    nextDays: lockDays(extras),
+    sun: lockSun(forecast, now),
+  };
+}
+
 export type Card = {
   kind: "weather";
   /** 地名；反查不到就是「当前位置」 */
@@ -142,6 +304,8 @@ export type Card = {
   dayColumns: DayColumn[];
   /** 底部是「一句话」时的内容；否则是 null */
   headline: HeadlineView | null;
+  /** 锁屏 13 款要用的数（气象实况、紫外线、空气、风、湿度、短临降水、逐时 / 逐日、日出日落） */
+  lock: LockView;
 };
 
 export type Empty = {
@@ -517,5 +681,6 @@ export function present(loaded: Loaded, now: number, size: CardSize, alerts: Ale
     bottomStats,
     dayColumns: shown.strip === "daily" && detail !== null ? detail.dayColumns : [],
     headline: shown.bottom === "headline" ? headline : null,
+    lock: lockOf(snapshot, loaded.extras, loaded.forecast, now),
   };
 }

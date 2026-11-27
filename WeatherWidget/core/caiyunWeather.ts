@@ -48,6 +48,12 @@ function finite(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/** 不能是负的降水强度之类的数；读不出或负数返回 null */
+function nonNegative(value: unknown): number | null {
+  const number = finite(value);
+  return number !== null && number >= 0 ? number : null;
+}
+
 function pad(value: number): string {
   return value < 10 ? "0" + value : String(value);
 }
@@ -193,7 +199,7 @@ export function adaptCaiyun(raw: unknown, context: AdaptContext): Adapted | null
   const temperatures = hourlySeries(hourly.temperature, offset);
   const precipitation = hourlySeries(hourly.precipitation, offset);
 
-  type Hour = { time: string; temperature: number | null; code: number | null; rain: number | null; isDay: number };
+  type Hour = { time: string; temperature: number | null; code: number | null; rain: number | null; amount: number | null; isDay: number };
   const hours = new Map<number, Hour>();
   for (const [epoch, entry] of skycon) {
     const hour = floorToHour(epoch, offset);
@@ -203,13 +209,15 @@ export function adaptCaiyun(raw: unknown, context: AdaptContext): Adapted | null
       temperature: finite(temperatures.get(epoch)?.value),
       code: codeForSkycon(entry.value),
       rain: percent(precipitation.get(epoch)?.probability),
+      // 每小时的降水量（mm/h），锁屏「降雨量预报」画柱子用；接口没给这一项就是 null
+      amount: nonNegative(precipitation.get(epoch)?.value),
       isDay: dayAt(epoch) ? 1 : 0,
     });
   }
   // 逐小时必须从「现在所在的整点」开始，整理逐小时那一行时要靠它找「现在」。接口从下一个整点才开始给的话，用实况补一格
   const currentCode = codeForSkycon(realtime.skycon);
   if (!hours.has(nowHour)) {
-    hours.set(nowHour, { time: formatLocal(nowHour, offset), temperature, code: currentCode, rain: null, isDay: dayAt(now) ? 1 : 0 });
+    hours.set(nowHour, { time: formatLocal(nowHour, offset), temperature, code: currentCode, rain: null, amount: null, isDay: dayAt(now) ? 1 : 0 });
   }
   const ordered = [...hours.entries()].sort((a, b) => a[0] - b[0]).map((pair) => pair[1]);
 
@@ -302,6 +310,8 @@ export function adaptCaiyun(raw: unknown, context: AdaptContext): Adapted | null
   extras.humidity = fractionPercent(realtime.humidity);
   extras.wind = windOf(realtime.wind);
   extras.pressure = pressureHpa(realtime.pressure);
+  // 锁屏「降雨量预报」的柱子：现在起每小时的降水量（mm/h），和逐小时的时间一一对应
+  extras.hourlyRain = ordered.some((hour) => hour.amount !== null) ? ordered.map((hour) => hour.amount) : null;
   const visibility = finite(realtime.visibility);
   extras.visibility = visibility !== null && visibility >= 0 ? Math.round(visibility * 10) / 10 : null;
   extras.cloud = fractionPercent(realtime.cloudrate);
@@ -339,10 +349,12 @@ export function adaptCaiyun(raw: unknown, context: AdaptContext): Adapted | null
   extras.dayOutlook = describe(hourly.description);
   if (isRecord(result.minutely)) {
     extras.rainOutlook = describe(result.minutely.description);
-    // 卡片底部只在真的会下雨 / 下雪时才写（没有降水不写「无降水」）
+    // 短临预报的两小时曲线：每分钟一个降水强度（mm/h），缺的是 null；只有一项或一项都读不出来就当没有
     if (Array.isArray(result.minutely.precipitation_2h)) {
-      const raining = result.minutely.precipitation_2h.some((value) => typeof value === "number" && value >= RAIN_THRESHOLD);
-      if (raining) extras.rainNote = extras.rainOutlook;
+      const series = result.minutely.precipitation_2h.map(nonNegative);
+      if (series.length > 1 && series.some((value) => value !== null)) extras.minutelyRain = series;
+      // 卡片底部只在真的会下雨 / 下雪时才写（没有降水不写「无降水」）
+      if (series.some((value) => value !== null && value >= RAIN_THRESHOLD)) extras.rainNote = extras.rainOutlook;
     }
   }
 

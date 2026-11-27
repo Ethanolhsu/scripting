@@ -11,6 +11,7 @@ import type { AlertState } from "./core/alertState";
 import { loadEverything } from "./core/everything";
 import { familyOf } from "./core/layout";
 import type { Loaded } from "./core/load";
+import { resolveLockStyle } from "./core/lock";
 import { present } from "./core/present";
 import { nextReloadAt } from "./core/schedule";
 import { parseParameter } from "./core/settings";
@@ -18,14 +19,18 @@ import { loadDisplay, loadSettings } from "./core/store";
 import { systemDeps } from "./core/system";
 import { WidgetView } from "./widget/view";
 
-/** 读不到实际尺寸时按小号的常见点数兜底，免得把卡片缩成 0 */
-const FALLBACK = 158;
-
-function displaySize(): { width: number; height: number } {
+/** 读不到实际尺寸时按小号的常见点数兜底，免得把卡片缩成 0；锁屏按系统给的常见点数兜底（圆形 72、矩形 158×72） */
+function displaySize(family: string): { width: number; height: number } {
   const size = Widget.displaySize;
+  const fallback =
+    family === "accessoryCircular"
+      ? { width: 72, height: 72 }
+      : family === "accessoryRectangular"
+        ? { width: 158, height: 72 }
+        : { width: 158, height: 158 };
   return {
-    width: size !== undefined && size.width > 0 ? size.width : FALLBACK,
-    height: size !== undefined && size.height > 0 ? size.height : FALLBACK,
+    width: size !== undefined && size.width > 0 ? size.width : fallback.width,
+    height: size !== undefined && size.height > 0 ? size.height : fallback.height,
   };
 }
 
@@ -41,15 +46,18 @@ function tapURL(): string | undefined {
 
 async function run(): Promise<void> {
   const family = Widget.family;
-  const { width, height } = displaySize();
+  const { width, height } = displaySize(family);
   const size = familyOf(family, width, height) === "large" ? "large" : "compact";
+  const settings = loadSettings();
+  // 锁屏画哪一款：组件参数里填了这种形状的编号 / 名字就用它，否则用 App 页「锁屏样式」里的默认款
+  const lockStyle = resolveLockStyle(family === "accessoryRectangular" ? "rect" : "circle", settings, Widget.parameter);
 
   let loaded: Loaded;
   let alerts: AlertState;
   try {
     // 天气、详细数据和预警（默认用内置接口，也可以换成自己的、或者备用的 Open-Meteo）是同一次请求，见 core/everything.ts
     ({ weather: loaded, alerts } = await loadEverything(systemDeps("widget"), {
-      settings: loadSettings(),
+      settings,
       parameter: parseParameter(Widget.parameter),
       force: false,
     }));
@@ -67,6 +75,7 @@ async function run(): Promise<void> {
       width={width}
       height={height}
       content={present(loaded, now, size, alerts, loadDisplay())}
+      lockStyle={lockStyle}
       tapURL={tapURL()}
     />,
     { policy: "after", date: new Date(nextReloadAt(loaded, now)) },

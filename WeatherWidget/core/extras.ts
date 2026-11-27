@@ -61,6 +61,10 @@ export type Extras = {
   pollutants: Pollutants | null;
   /** 紫外线：强度指数（可能读不出）和文字 */
   uv: { index: number | null; text: string } | null;
+  /** 未来两小时每分钟的降水强度（mm/h），锁屏「短临预报」画曲线用；备用来源没有 */
+  minutelyRain: readonly (number | null)[] | null;
+  /** 现在起每小时的降水量（mm/h），锁屏「降雨量预报」画柱子用；备用来源没有 */
+  hourlyRain: readonly (number | null)[] | null;
   /** 一句话概括：「今日多云，气温适宜」 */
   keypoint: string | null;
   /** 未来 24 小时的概括：「未来24小时多云，气温适中」 */
@@ -86,6 +90,8 @@ export function emptyExtras(): Extras {
     aqi: null,
     pollutants: null,
     uv: null,
+    minutelyRain: null,
+    hourlyRain: null,
     keypoint: null,
     dayOutlook: null,
     rainOutlook: null,
@@ -129,6 +135,13 @@ function parsePollutants(raw: unknown): Pollutants | null {
     co: numberOrNull(raw.co),
   };
   return Object.values(got).every((value) => value === null) ? null : got;
+}
+
+/** 一串降水强度（mm/h）：不是数组、或者一项都读不出来就是 null；缺的那项留 null（曲线在那里断开） */
+function parseRainSeries(raw: unknown): readonly (number | null)[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const values = raw.map((value) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null));
+  return values.some((value) => value !== null) ? values : null;
 }
 
 /** 缓存里存的 extras 读回来：每一项都重新验一遍，坏的那项当没有，不让脚本崩 */
@@ -181,6 +194,8 @@ export function parseExtras(raw: unknown): Extras | null {
     aqi,
     pollutants,
     uv,
+    minutelyRain: parseRainSeries(raw.minutelyRain),
+    hourlyRain: parseRainSeries(raw.hourlyRain),
     keypoint: textOrNull(raw.keypoint),
     dayOutlook: textOrNull(raw.dayOutlook),
     rainOutlook: textOrNull(raw.rainOutlook),

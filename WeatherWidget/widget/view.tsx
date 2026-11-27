@@ -9,6 +9,7 @@
 
 import { ZStack } from "scripting";
 import { familyOf, layoutVariant, metricsFor } from "../core/layout";
+import type { LockStyle } from "../core/lock";
 import type { Content } from "../core/present";
 import { AccessoryView } from "./accessory";
 import { CardBody } from "./bodies";
@@ -20,18 +21,21 @@ export function WidgetView({
   width,
   height,
   content,
+  lockStyle,
   tapURL,
 }: {
   family: string;
   width: number;
   height: number;
   content: Content;
+  /** 锁屏这一款画什么；主屏幕的尺寸用不到 */
+  lockStyle: LockStyle;
   tapURL: string | undefined;
 }) {
   const layout = familyOf(family, width, height);
 
   if (layout === "circular" || layout === "rectangular" || layout === "inline") {
-    return <AccessoryView family={layout} content={content} tapURL={tapURL} />;
+    return <AccessoryView family={layout} width={width} height={height} style={lockStyle} content={content} tapURL={tapURL} />;
   }
 
   // 中号选了「未来几天」或底部的「一句话」时，竖向放不下原来的字号，用紧凑的那套

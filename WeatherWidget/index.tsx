@@ -41,6 +41,7 @@ import { AlertsSection } from "./pages/AlertsSection";
 import { AirSection, DetailSection, LifeSection, SummarySection, WeekSection, hasDetail } from "./pages/DetailSections";
 import { DisplaySection } from "./pages/DisplaySection";
 import { Fold, type FoldState } from "./pages/Fold";
+import { LockSection } from "./pages/LockSection";
 import { PlaceLevelPicker } from "./pages/PlaceLevelPicker";
 import { LoadingCard, PreviewCard } from "./pages/Preview";
 import { SourceSection } from "./pages/SourceSection";
@@ -264,6 +265,13 @@ function App() {
     Widget.reloadAll();
   }
 
+  /** 换锁屏默认款式：存下来、让锁屏的小组件重画（组件参数里填了款式的那些不受影响） */
+  function changeLock(next: Settings): void {
+    setSettings(next);
+    saveSettings(next);
+    Widget.reloadAll();
+  }
+
   /** 「预览预警样式」：10 分钟里给主屏幕和锁屏的小组件两条写着「示例」的假预警，好看看徽章长什么样 */
   async function startDemo(): Promise<void> {
     const until = Date.now() + ALERT_DEMO_MS;
@@ -336,6 +344,7 @@ function App() {
 
         <Section header={<Text>小组件设置</Text>}>
           <DisplaySection display={display} onChange={changeDisplay} fold={foldOf("display")} />
+          <LockSection settings={settings} onChange={changeLock} fold={foldOf("lock")} />
           <Fold title="位置" note={placeNote} fold={foldOf("place")} footer={PLACE_FOOTER}>
             <Picker title="看哪里的天气" value={choice} onChanged={(value: string) => changeChoice(value as Settings["mode"])}>
               <Text tag="current">跟着当前定位</Text>

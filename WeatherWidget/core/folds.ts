@@ -3,7 +3,7 @@
 // 存储里读出来一律先 parse：只认认得的组、只认 true；坏了就当全收着。
 
 /** 可收起的组，id 就是存下来的键 */
-export const FOLD_IDS = ["display", "place", "source", "alerts", "summary", "week", "detail", "air", "life", "status", "widget", "credits"] as const;
+export const FOLD_IDS = ["display", "place", "source", "alerts", "summary", "week", "detail", "air", "life", "status", "widget", "lock", "credits"] as const;
 
 export type FoldId = (typeof FOLD_IDS)[number];
 

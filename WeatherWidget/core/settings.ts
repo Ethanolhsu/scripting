@@ -16,10 +16,14 @@ export type Settings = {
   fixed: FixedPlace | null;
   /** 标题里的地名写到哪一级 */
   placeLevel: PlaceLevel;
+  /** 锁屏圆形的默认款式（见 core/lock.ts 的 value）；空的话用第一款「天气实况」 */
+  lockCircle: string;
+  /** 锁屏矩形的默认款式；空的话用第一款「短临预报」 */
+  lockRect: string;
 };
 
 export function defaultSettings(): Settings {
-  return { mode: "current", fixed: null, placeLevel: "city" };
+  return { mode: "current", fixed: null, placeLevel: "city", lockCircle: "", lockRect: "" };
 }
 
 const MAX_NAME = 24;
@@ -51,6 +55,9 @@ export function parseSettings(raw: unknown): Settings {
     mode: record.mode === "fixed" && fixed !== null ? "fixed" : "current",
     fixed,
     placeLevel: record.placeLevel === "district" ? "district" : "city",
+    // 款式存的是 value（如 `uv`），读的时候只认字符串；认不出的款式由 core/lock.ts 退回第一款
+    lockCircle: typeof record.lockCircle === "string" ? record.lockCircle.trim().slice(0, 40) : "",
+    lockRect: typeof record.lockRect === "string" ? record.lockRect.trim().slice(0, 40) : "",
   };
 }
 
