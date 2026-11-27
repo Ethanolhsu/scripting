@@ -48,13 +48,17 @@ export function circleDesign(width: number, height: number): LockDesign {
 }
 
 /**
- * 矩形：横向铺满 160、纵向铺满 72；字号按高度
+ * 矩形：横向铺满 160；纵向按整块组件的 76 高排（系统给的是减掉上下边距后的内容高度，
+ * 一般只有 72，原版也是按 76 排、画进上下各 2pt 的边距里），字号跟着 76 走。
+ * 横向不动：系统左右边距各 7pt，原版的 160 宽画面基本就落在内容区里。
  */
 export function rectDesign(width: number, height: number): LockDesign {
   const realWidth = usable(width, 160);
   const realHeight = usable(height, 72);
+  const fullHeight = Math.max(realHeight, 76);
   const sx = realWidth / RECT_DESIGN.width;
-  const sy = realHeight / RECT_DESIGN.height;
+  const sy = fullHeight / RECT_DESIGN.height;
+  const top = (realHeight - fullHeight) / 2;
   return {
     width: realWidth,
     height: realHeight,
@@ -62,7 +66,7 @@ export function rectDesign(width: number, height: number): LockDesign {
     sy,
     unit: Math.min(sx, sy),
     X: (value) => value * sx,
-    Y: (value) => value * sy,
+    Y: (value) => top + value * sy,
   };
 }
 
