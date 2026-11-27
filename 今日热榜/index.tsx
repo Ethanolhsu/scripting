@@ -15,8 +15,9 @@ import {
   TextField,
   VStack,
   Widget,
+  useState,
 } from "scripting"
-import { BUILTIN_BOARDS, loadSettings, saveSettings, clearCaches, type Board, type Settings, type Style } from "./core/store"
+import { BUILTIN_BOARDS, loadSettings, saveSettings, clearCaches, type Board, type Hex, type Settings, type Style } from "./core/store"
 import { loadBoard, parseBoardId } from "./core/tophub"
 
 function Row({ title, value }: { title: string; value: string }) {
@@ -214,8 +215,8 @@ function App() {
         </Section>
 
         <Section header={<Text>外观</Text>}>
-          <TextField title="背景色" value={style.background} prompt="#151517" onChanged={(text) => patchStyle({ background: text.trim() })} />
-          <TextField title="前三名颜色" value={style.hotColor} prompt="#EF233C" onChanged={(text) => patchStyle({ hotColor: text.trim() })} />
+          <TextField title="背景色" value={style.background} prompt="#151517" onChanged={(text) => patchStyle({ background: text.trim() as Hex })} />
+          <TextField title="前三名颜色" value={style.hotColor} prompt="#EF233C" onChanged={(text) => patchStyle({ hotColor: text.trim() as Hex })} />
           <ToggleRow title="显示榜单名与图标" on={style.showTitle} onChange={(next) => patchStyle({ showTitle: next })} />
           <ToggleRow title="显示刷新时间（中/大号）" on={style.showRefresh} onChange={(next) => patchStyle({ showRefresh: next })} />
           <Button

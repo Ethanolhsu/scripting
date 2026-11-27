@@ -6,7 +6,7 @@
 
 import { HStack, Image, Spacer, Text, VStack, ZStack } from "scripting"
 import { formatTime, type Metrics } from "../core/layout"
-import type { BoardData, Style } from "../core/store"
+import type { BoardData, Hex, Style } from "../core/store"
 
 const TEXT = "#FFFFFF"
 const TEXT_2 = "#9B9BA1"
@@ -20,7 +20,7 @@ function Row({
   title: string
   index: number
   m: Metrics
-  hotColor: string
+  hotColor: Hex
 }) {
   const top = index < 3
   return (
@@ -102,12 +102,7 @@ export function WidgetView({
         {showTitle || showTime ? (
           <HStack alignment="center" spacing={m.gap * 1.5} frame={{ height: m.title + m.gap * 2 }}>
             {showTitle && board.icon !== "" ? (
-              <Image
-                imageUrl={board.icon}
-                resizable={true}
-                frame={{ width: m.icon, height: m.icon }}
-                cornerRadius={m.icon / 4}
-              />
+              <Image imageUrl={board.icon} resizable={true} frame={{ width: m.icon, height: m.icon }} />
             ) : null}
             {showTitle ? (
               <Text

@@ -2,6 +2,9 @@
 // App 和小组件是两个运行环境，共用的就是这几份；读出来一律先验一遍，坏的、旧版本写的都当没有，不让脚本崩。
 // 注：Storage 是 Scripting 的全局对象，不用 import。
 
+/** `#RRGGBB`。Scripting 的颜色参数认这个模板字面量类型，直接传字符串会过不了类型检查 */
+export type Hex = `#${string}`
+
 export type Board = {
   id: string
   name: string
@@ -20,9 +23,9 @@ export type Style = {
   /** 行距（中号基准） */
   lineSpacing: number
   /** 前三名序号颜色 */
-  hotColor: string
+  hotColor: Hex
   /** 组件背景色 */
-  background: string
+  background: Hex
   showTitle: boolean
   showRefresh: boolean
 }
@@ -113,8 +116,8 @@ function parseStyle(raw: unknown): Style {
     titleSize: clampNumber(record.titleSize, DEFAULT_STYLE.titleSize, 10, 22),
     contentSize: clampNumber(record.contentSize, DEFAULT_STYLE.contentSize, 9, 18),
     lineSpacing: clampNumber(record.lineSpacing, DEFAULT_STYLE.lineSpacing, 0, 12),
-    hotColor: isHex(record.hotColor) ? record.hotColor.trim() : DEFAULT_STYLE.hotColor,
-    background: isHex(record.background) ? record.background.trim() : DEFAULT_STYLE.background,
+    hotColor: (isHex(record.hotColor) ? record.hotColor.trim() : DEFAULT_STYLE.hotColor) as Hex,
+    background: (isHex(record.background) ? record.background.trim() : DEFAULT_STYLE.background) as Hex,
     showTitle: record.showTitle !== false,
     showRefresh: record.showRefresh !== false,
   }
