@@ -214,8 +214,19 @@ function App() {
           {numberField("行距", style.lineSpacing, 0, 12, (next) => patchStyle({ lineSpacing: next }))}
         </Section>
 
-        <Section header={<Text>外观</Text>}>
-          <TextField title="背景色" value={style.background} prompt="#151517" onChanged={(text) => patchStyle({ background: text.trim() as Hex })} />
+        <Section header={<Text>外观</Text>} footer={<Text>两个背景分别给浅色、深色模式用；文字颜色按背景亮度自动选（浅底黑字、深底白字）。</Text>}>
+          <TextField
+            title="浅色模式背景"
+            value={style.backgroundLight}
+            prompt="#FFFFFF"
+            onChanged={(text) => patchStyle({ backgroundLight: text.trim() as Hex })}
+          />
+          <TextField
+            title="深色模式背景"
+            value={style.backgroundDark}
+            prompt="#151517"
+            onChanged={(text) => patchStyle({ backgroundDark: text.trim() as Hex })}
+          />
           <TextField title="前三名颜色" value={style.hotColor} prompt="#EF233C" onChanged={(text) => patchStyle({ hotColor: text.trim() as Hex })} />
           <ToggleRow title="显示榜单名与图标" on={style.showTitle} onChange={(next) => patchStyle({ showTitle: next })} />
           <ToggleRow title="显示刷新时间（中/大号）" on={style.showRefresh} onChange={(next) => patchStyle({ showRefresh: next })} />

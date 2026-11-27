@@ -37,14 +37,22 @@
 | `FileManager.appGroupDocumentsDirectory` 存 JSON | `Storage.get/set`，App 与组件天然共用 |
 | `Navigation.present(<App />)` | `Navigation.present({ element: <App />, modalPresentationStyle: "fullScreen" })` |
 | 组件根视图靠系统内容边距 | 根 `ZStack` 按 `Widget.displaySize` 撑满，内缩自己算（`widget/view.tsx`） |
-| `foregroundStyle="primary"` 这类猜的语义色 | 明确写 `#RRGGBB`，根视图 `environments={{ colorScheme: "dark" }}` 锁深色，字色固定白 |
+| `foregroundStyle="primary"` 这类猜的语义色 | 颜色用 `#${string}` 类型；背景给浅色/深色两套（`{ light, dark }`），字色按背景亮度自动选 |
 | 每次刷新都联网 | 10 分钟缓存；被「安全验证」拦了先用电脑版 UA 重试，再退回旧缓存 |
-| 点组件没有反应 | `widgetURL={Script.createRunURLScheme(Script.name)}`，点一下打开脚本 |
+| 点组件没有反应 | `widgetURL` 填当前榜单的网页地址，点一下直接打开 tophub 页面 |
+
+## 点击行为
+
+点整个组件会打开当前显示的那个榜单在 tophub 的网页（`https://tophub.today/n/<id>`），和原版一样。原版里每条热搜还能各自跳到自己的链接，小组件里做不到逐条设 URL，只能整块跳转。
+
+## 深浅色
+
+设置页里「外观」有两项：**浅色模式背景**、**深色模式背景**，分别给两种系统外观用。文字颜色不单独配，按背景亮度自动选：浅底用近黑、深底用纯白，次要文字（序号、时间）同理。这样把背景换成浅色也不会出现白字看不见。
 
 ## 已知限制
 
 - **站点安全验证**：tophub 会对非浏览器请求返回 403 验证页。脚本已经做了双 UA 重试和缓存回退，但在被拦且没有缓存时，组件只能显示「暂时取不到数据」。
-- **单条热搜点击**：组件里只能整块点击（打开脚本），做不了每条各自跳转；Scripting 的 `Link` 目前不保证在小组件里可用。
+- **单条热搜点击**：组件里只能整块点击（打开当前榜单网页），做不了每条各自跳转；Scripting 的 `Link` 目前不保证在小组件里可用。
 - **斜体没做**：Scripting 的斜体要走 `styledText`，字号不好控，前三名改成红色 + 加粗，观感和原版接近。
 - **图标**：直接用 `Image imageUrl` 加载 tophub 的图标地址（实测不带 Referer 也能取到）；取不到就只显示文字。
 

@@ -1,26 +1,32 @@
-// 小组件的根视图：按 `Widget.family` 挑版面，套背景和「点一下打开本脚本」。
+// 小组件的根视图：按 `Widget.family` 挑版面，背景和字色都按「浅色 / 深色」各给一套。
 //
-// 根视图撑成 `Widget.displaySize` 的满尺寸、内缩自己留：系统会不会另留一圈内容边距、背景画在哪，
-// 文档都没写死，这样不管哪种情况背景都铺到边，内容离边缘多远只由我们的 inset 决定。
-// 配色锁成深色：背景是我们自己的深色卡，字就一直是白的，不跟着系统亮暗变。
+// 背景色由设置里的 backgroundLight / backgroundDark 决定，交给 DynamicShapeStyle（{ light, dark }），
+// 系统在浅色模式下取 light、深色模式下取 dark，不需要我们判断当前是哪种模式。
+// 字色不让用户单独配：按背景的亮度自动选（浅底近黑、深底纯白），改浅色背景也不会白字看不清。
+//
+// 根视图撑成 `Widget.displaySize` 的满尺寸、内缩自己留：背景才铺得到边。
 
 import { HStack, Image, Spacer, Text, VStack, ZStack } from "scripting"
-import { formatTime, type Metrics } from "../core/layout"
+import { formatTime, inkFor, secondaryInkFor, type Metrics } from "../core/layout"
 import type { BoardData, Hex, Style } from "../core/store"
 
-const TEXT = "#FFFFFF"
-const TEXT_2 = "#9B9BA1"
+/** 浅色/深色两套值 */
+type Dynamic = { light: Hex; dark: Hex }
 
 function Row({
   title,
   index,
   m,
   hotColor,
+  ink,
+  secondary,
 }: {
   title: string
   index: number
   m: Metrics
   hotColor: Hex
+  ink: Dynamic
+  secondary: Dynamic
 }) {
   const top = index < 3
   return (
@@ -28,7 +34,7 @@ function Row({
       <Text
         font={m.content}
         fontWeight={top ? "bold" : "regular"}
-        foregroundStyle={top ? hotColor : TEXT_2}
+        foregroundStyle={top ? hotColor : secondary}
         lineLimit={1}
         frame={{ width: m.indexWidth, alignment: "leading" }}
       >
@@ -36,7 +42,7 @@ function Row({
       </Text>
       <Text
         font={m.content}
-        foregroundStyle={TEXT}
+        foregroundStyle={ink}
         lineLimit={1}
         truncationMode="tail"
         minScaleFactor={0.8}
@@ -48,16 +54,32 @@ function Row({
   )
 }
 
-function EmptyCard({ title, lines, m }: { title: string; lines: string[]; m: Metrics }) {
+function EmptyCard({
+  title,
+  lines,
+  m,
+  ink,
+  secondary,
+}: {
+  title: string
+  lines: string[]
+  m: Metrics
+  ink: Dynamic
+  secondary: Dynamic
+}) {
   return (
     <VStack alignment="leading" spacing={m.gap}>
       <Spacer />
-      <Image systemName="exclamationmark.arrow.triangle.2.circlepath" font={m.title * 1.6} foregroundStyle={TEXT_2} />
-      <Text font={m.title} fontWeight="semibold" foregroundStyle={TEXT} lineLimit={1}>
+      <Image
+        systemName="exclamationmark.arrow.triangle.2.circlepath"
+        font={m.title * 1.6}
+        foregroundStyle={secondary}
+      />
+      <Text font={m.title} fontWeight="semibold" foregroundStyle={ink} lineLimit={1}>
         {title}
       </Text>
       {lines.map((line) => (
-        <Text key={line} font={m.content} foregroundStyle={TEXT_2} lineLimit={1} minScaleFactor={0.7}>
+        <Text key={line} font={m.content} foregroundStyle={secondary} lineLimit={1} minScaleFactor={0.7}>
           {line}
         </Text>
       ))}
@@ -85,6 +107,12 @@ export function WidgetView({
   style: Style
   tapURL: string | undefined
 }) {
+  const ink: Dynamic = { light: inkFor(style.backgroundLight), dark: inkFor(style.backgroundDark) }
+  const secondary: Dynamic = {
+    light: secondaryInkFor(style.backgroundLight),
+    dark: secondaryInkFor(style.backgroundDark),
+  }
+
   const items = data === null ? [] : data.items.slice(0, m.count)
   const boardTitle = (data?.title || board.name || "今日热榜").trim()
   const showTime = family !== "systemSmall" && style.showRefresh
@@ -94,8 +122,10 @@ export function WidgetView({
     items.length === 0 ? (
       <EmptyCard
         title={boardTitle === "" ? "今日热榜" : boardTitle}
-        lines={["暂时取不到数据", "点一下打开脚本，去设置里刷新"]}
+        lines={["暂时取不到数据", "点一下打开热榜网页"]}
         m={m}
+        ink={ink}
+        secondary={secondary}
       />
     ) : (
       <VStack alignment="leading" spacing={0}>
@@ -108,7 +138,7 @@ export function WidgetView({
               <Text
                 font={m.title}
                 fontWeight="semibold"
-                foregroundStyle={TEXT}
+                foregroundStyle={ink}
                 lineLimit={1}
                 minScaleFactor={0.6}
                 layoutPriority={1}
@@ -119,8 +149,8 @@ export function WidgetView({
             <Spacer />
             {showTime ? (
               <HStack alignment="center" spacing={2}>
-                <Image systemName="arrow.clockwise" font={m.meta} foregroundStyle={TEXT_2} />
-                <Text font={m.meta} foregroundStyle={TEXT_2} lineLimit={1}>
+                <Image systemName="arrow.clockwise" font={m.meta} foregroundStyle={secondary} />
+                <Text font={m.meta} foregroundStyle={secondary} lineLimit={1}>
                   {formatTime(new Date())}
                 </Text>
               </HStack>
@@ -130,7 +160,15 @@ export function WidgetView({
 
         <VStack alignment="leading" spacing={m.gap}>
           {items.map((item, index) => (
-            <Row key={`${index}-${item.title}`} title={item.title} index={index} m={m} hotColor={style.hotColor} />
+            <Row
+              key={`${index}-${item.title}`}
+              title={item.title}
+              index={index}
+              m={m}
+              hotColor={style.hotColor}
+              ink={ink}
+              secondary={secondary}
+            />
           ))}
         </VStack>
         <Spacer />
@@ -140,9 +178,8 @@ export function WidgetView({
   return (
     <ZStack
       frame={{ width, height }}
-      widgetBackground={style.background}
+      widgetBackground={{ light: style.backgroundLight, dark: style.backgroundDark }}
       widgetURL={tapURL}
-      environments={{ colorScheme: "dark" }}
     >
       <VStack
         alignment="leading"

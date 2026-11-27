@@ -1,12 +1,13 @@
 // 今日热榜小组件的入口：读设置 → 选榜单 → 取数据（缓存新就不联网）→ 算版面 → 画出来 → 约好下次重画。
 //
+// 点一下组件：打开当前这个榜单在 tophub 上的网页（和原版一致），不是打开脚本。
 // 小组件是一次性渲染：`Widget.present` 一返回，这段上下文就没了，所以要在它之前把该算的都算完。
 // 取数失败不空白：先退回缓存（在 core/tophub.ts 里），再不行就画一张写着原因的小卡。
 
-import { Script, Text, Widget, VStack, ZStack } from "scripting"
+import { Text, Widget, VStack, ZStack } from "scripting"
 import { familyOf, metricsFor, pickBoard } from "./core/layout"
 import { loadSettings, saveSettings, type BoardData } from "./core/store"
-import { loadBoard } from "./core/tophub"
+import { loadBoard, TOPHUB } from "./core/tophub"
 import { WidgetView } from "./widget/view"
 
 const FALLBACK: Record<string, { width: number; height: number }> = {
@@ -20,15 +21,6 @@ function displaySize(layout: "small" | "medium" | "large"): { width: number; hei
   const width = size !== undefined && Number.isFinite(size.width) && size.width > 0 ? size.width : FALLBACK[layout].width
   const height = size !== undefined && Number.isFinite(size.height) && size.height > 0 ? size.height : FALLBACK[layout].height
   return { width, height }
-}
-
-/** 点一下组件：打开本脚本（App 页里能管理榜单） */
-function tapURL(): string | undefined {
-  try {
-    return typeof Script.name === "string" && Script.name !== "" ? Script.createRunURLScheme(Script.name) : undefined
-  } catch {
-    return undefined
-  }
 }
 
 async function run(): Promise<void> {
@@ -64,7 +56,7 @@ async function run(): Promise<void> {
       board={board}
       data={data}
       style={settings.style}
-      tapURL={tapURL()}
+      tapURL={`${TOPHUB}/n/${board.id}`}
     />,
     { policy: "after", date: new Date(Date.now() + 60 * 60 * 1000) },
   )

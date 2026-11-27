@@ -24,8 +24,10 @@ export type Style = {
   lineSpacing: number
   /** 前三名序号颜色 */
   hotColor: Hex
-  /** 组件背景色 */
-  background: Hex
+  /** 浅色模式下的组件背景 */
+  backgroundLight: Hex
+  /** 深色模式下的组件背景 */
+  backgroundDark: Hex
   showTitle: boolean
   showRefresh: boolean
 }
@@ -60,7 +62,8 @@ export const DEFAULT_STYLE: Style = {
   contentSize: 13,
   lineSpacing: 4,
   hotColor: "#EF233C",
-  background: "#151517",
+  backgroundLight: "#FFFFFF",
+  backgroundDark: "#151517",
   showTitle: true,
   showRefresh: true,
 }
@@ -117,7 +120,9 @@ function parseStyle(raw: unknown): Style {
     contentSize: clampNumber(record.contentSize, DEFAULT_STYLE.contentSize, 9, 18),
     lineSpacing: clampNumber(record.lineSpacing, DEFAULT_STYLE.lineSpacing, 0, 12),
     hotColor: (isHex(record.hotColor) ? record.hotColor.trim() : DEFAULT_STYLE.hotColor) as Hex,
-    background: (isHex(record.background) ? record.background.trim() : DEFAULT_STYLE.background) as Hex,
+    // 旧版只有一个 background：留着当深色背景，浅色用默认白
+    backgroundLight: (isHex(record.backgroundLight) ? record.backgroundLight.trim() : isHex(record.background) ? "#FFFFFF" : DEFAULT_STYLE.backgroundLight) as Hex,
+    backgroundDark: (isHex(record.backgroundDark) ? record.backgroundDark.trim() : isHex(record.background) ? record.background.trim() : DEFAULT_STYLE.backgroundDark) as Hex,
     showTitle: record.showTitle !== false,
     showRefresh: record.showRefresh !== false,
   }

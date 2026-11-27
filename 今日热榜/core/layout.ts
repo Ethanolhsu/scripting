@@ -3,7 +3,7 @@
 // 所以所有数都是「参考尺寸上的值 × 缩放比」，不写死某一台机器。
 // 内缩也由我们自己定，不指望系统给的内容边距（见 widget/view.tsx）。
 
-import type { Board, Style } from "./store"
+import type { Board, Hex, Style } from "./store"
 
 export type Family = "small" | "medium" | "large"
 
@@ -108,4 +108,22 @@ export function pickBoard(boards: Board[], cursor: number, parameter: string): {
   if (list.length === 0) return { board: { id: "KqndgxeLl9", name: "微博 ‧ 热搜榜", icon: "" }, pinned: false }
   const index = ((cursor % list.length) + list.length) % list.length
   return { board: list[index], pinned: false }
+}
+
+/** 相对亮度（0 黑 ~ 1 白），用来决定背景上该配白字还是黑字 */
+function luminance(hex: Hex): number {
+  const value = hex.replace("#", "")
+  const channels = [0, 2, 4].map((start) => parseInt(value.slice(start, start + 2), 16) / 255)
+  const linear = channels.map((channel) => (channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4)))
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+}
+
+/** 背景上的主文字色：浅底配近黑，深底配白 */
+export function inkFor(background: Hex): Hex {
+  return luminance(background) > 0.5 ? "#1C1C1E" : "#FFFFFF"
+}
+
+/** 背景上的次要文字色（序号、时间） */
+export function secondaryInkFor(background: Hex): Hex {
+  return luminance(background) > 0.5 ? "#5B5B60" : "#AEAEB2"
 }
