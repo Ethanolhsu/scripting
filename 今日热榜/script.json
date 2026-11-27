@@ -1,0 +1,26 @@
+{
+  "name": "今日热榜",
+  "localizedNames": {
+    "zh": "今日热榜",
+    "en": "Hot Board"
+  },
+  "description": "主屏幕的今日热榜小组件：按榜单顺序轮换显示微博、知乎、抖音等热榜，前三名红色标记；点开可管理榜单、条数、字号和配色",
+  "localizedDescriptions": {
+    "zh": "主屏幕的今日热榜小组件：按榜单顺序轮换显示微博、知乎、抖音等热榜，前三名红色标记；点开可管理榜单、条数、字号和配色",
+    "en": "Home Screen hot-list widget: cycles through Weibo, Zhihu, Douyin and other boards from tophub.today, with the top three marked in red; tap to manage boards, counts, font sizes and colors"
+  },
+  "version": "1.0.0",
+  "author": {
+    "name": "Aiden",
+    "email": null,
+    "homepage": null
+  },
+  "contributors": [],
+  "icon": "flame.fill",
+  "color": "#EF233C",
+  "iconImage": null,
+  "entry": "index.tsx",
+  "permissions": [],
+  "intentInputTypes": [],
+  "runInApp": true
+}
