@@ -119,8 +119,8 @@ export function AccessoryView({
 const LABEL_WIDTH = 37;
 /** 图标列宽：16pt 图标 + 12pt 到温度的间距。定宽，三行图标才落在同一 x（弹性间隔会把内容少的行推右） */
 const ICON_WIDTH = 28;
-/** 最低温列宽：「21°」在 17pt 下约 24pt，定宽让两行横线起点对齐 */
-const LOW_WIDTH = 27;
+/** 最低温列宽：「17°」在 17pt bold 下约 29pt，留到 32 免得被 minScaleFactor 缩小，横线起点仍对齐 */
+const LOW_WIDTH = 32;
 /** 温度区间横线：长度超过 ~24pt 会开始挤字（锁屏矩形只有 ~150pt 宽） */
 const DASH_LENGTH = 18;
 const DASH_THICKNESS = 3;
