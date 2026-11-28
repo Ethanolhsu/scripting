@@ -116,13 +116,13 @@ export function AccessoryView({
  */
 
 /** 标签列宽：两个 16pt 汉字约 32pt + 4pt 到图标的间距。定宽，三行标签才对齐 */
-const LABEL_WIDTH = 38;
-/** 图标列宽：16pt 图标 + 8pt 到温度的间距。定宽，三行图标才落在同一 x（弹性间隔会把内容少的行推右） */
-const ICON_WIDTH = 24;
+const LABEL_WIDTH = 37;
+/** 图标列宽：16pt 图标 + 12pt 到温度的间距。定宽，三行图标才落在同一 x（弹性间隔会把内容少的行推右） */
+const ICON_WIDTH = 28;
 /** 最低温列宽：「21°」在 17pt 下约 24pt，定宽让两行横线起点对齐 */
 const LOW_WIDTH = 27;
 /** 温度区间横线：长度超过 ~24pt 会开始挤字（锁屏矩形只有 ~150pt 宽） */
-const DASH_LENGTH = 20;
+const DASH_LENGTH = 18;
 const DASH_THICKNESS = 3;
 
 function RectRow({ label, symbol, children }: { label: string; symbol: string; children: VirtualNode }) {
